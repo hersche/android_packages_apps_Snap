@@ -103,6 +103,8 @@
     <string name="pref_camera_advanced_feature_value_trueportrait_off" translatable="false">true-portrait-off</string>
     <string name="pref_camera_advanced_feature_value_multi_touch_focus_off" translatable="false">multi-touch-focus-off</string>
 
+    <string name="pref_camera_advanced_feature_value_none" translatable="false">none</string>
+
     <!-- Manual exposure -->
     <string name="pref_camera_manual_exp_title">Manual exposure</string>
     <string name="pref_camera_manual_exp_default" translatable="false">off</string>
@@ -128,6 +130,11 @@
     <string name="pref_camera_manual_focus_entry_diopter_mode">Diopter mode</string>
     <string name="pref_camera_manual_focus_entry_off">Off</string>
 
+    <!-- Still More -->
+    <string name="pref_camera_advanced_feature_entry_stillmore" translatable="false">Still More</string>
+    <string name="pref_camera_advanced_feature_value_stillmore_on" translatable="false">still-more-on</string>
+    <string name="pref_camera_advanced_feature_value_stillmore_off" translatable="false">still-more-off</string>
+
     <!-- Video HDR-->
     <string name="pref_camera_video_hdr_title">Video HDR</string>
     <string name="pref_camera_video_hdr_default" translatable="false">off</string>
@@ -140,7 +147,7 @@
 
     <!-- Video CDS-->
     <string name="pref_camera_video_cds_title">Video CDS mode</string>
-    <string name="pref_camera_video_cds_default" translatable="false">on</string>
+    <string name="pref_camera_video_cds_default" translatable="false">off</string>
 
     <string name="pref_camera_video_cds_entry_auto">Auto</string>
 
@@ -150,7 +157,7 @@
 
     <!-- Video TNR -->
     <string name="pref_camera_video_tnr_title">Video TNR mode</string>
-    <string name="pref_camera_video_tnr_default" translatable="false">off</string>
+    <string name="pref_camera_video_tnr_default" translatable="false">on</string>
 
     <!-- Face detection -->
     <string name="pref_camera_facedetection_title">Face detection</string>
@@ -188,7 +195,7 @@
 
     <!-- Denoise -->
     <string name="pref_camera_denoise_title">Denoise</string>
-    <string name="pref_camera_denoise_default" translatable="false">denoise-off</string>
+    <string name="pref_camera_denoise_default" translatable="false">denoise-on</string>
 
     <!-- ISO -->
     <string name="pref_camera_iso_title">ISO</string>
@@ -495,6 +502,16 @@
     <!-- Toast after 2k4k video is enabled to inform SeeMore has been disabled -->
     <string name="video_quality_4k_disable_SeeMore">SeeMore cannot be enabled during 4k video</string>
 
+    <string name="initial_recording_seconds" translatable="false">00:00</string>
+
+    <string name="pref_camera_scenemode_entry_optizoom" translatable="false">OptiZoom</string>
+
+    <!-- Toast after SeeMore has been enabled to show CDS is disabled -->
+    <string name="disable_CDS_during_SeeMore">Enabling SeeMore will disable CDS</string>
+
+    <!-- Toast after SeeMore has been enabled to show TNR is disabled -->
+    <string name="disable_TNR_during_SeeMore">Enabling SeeMore will disable TNR</string>
+
     <!-- TODO: Remove these? -->
     <string name="pref_camera_redeyereduction_entry_disable" translatable="false">disable</string>
 
@@ -513,9 +530,6 @@
     <string name="pref_camera_manual_exp_value_ISO_priority" translatable="false">iso-priority</string>
     <string name="pref_camera_manual_exp_value_exptime_priority" translatable="false">exp-time-priority</string>
     <string name="pref_camera_manual_exp_value_user_setting" translatable="false">user-setting</string>
-
-    <string name="pref_camera_see_more_value_off" translatable="false">off</string>
-    <string name="pref_camera_see_more_value_on" translatable="false">on</string>
 
     <string name="pref_camera_dis_value_disable" translatable="false">disable</string>
 </resources>

@@ -118,6 +118,8 @@ class AndroidCameraManagerImpl implements CameraManager {
     }
 
     private class CameraHandler extends Handler {
+        CameraOpenErrorCallbackForward errorCbInstance;
+
         CameraHandler(Looper looper) {
             super(looper);
         }
@@ -211,25 +213,26 @@ class AndroidCameraManagerImpl implements CameraManager {
                 switch (msg.what) {
                     case OPEN_CAMERA:
                         int cameraId = msg.arg1;
-                        try {
-                            Context context = CameraApp.getContext();
+                        Context context = CameraApp.getContext();
 
-                            boolean backCameraOpenLegacy = context.getResources().getBoolean(R.bool.back_camera_open_legacy);
-                            boolean frontCameraOpenLegacy = context.getResources().getBoolean(R.bool.front_camera_open_legacy);
+                        boolean backCameraOpenLegacy = context.getResources().
+                                getBoolean(R.bool.back_camera_open_legacy);
+                        boolean frontCameraOpenLegacy = context.getResources().
+                                getBoolean(R.bool.front_camera_open_legacy);
 
-                            CameraInfo info = CameraHolder.instance().getCameraInfo()[cameraId];
-
-                            if ((info.facing == CameraInfo.CAMERA_FACING_BACK && backCameraOpenLegacy) || 
-                                (info.facing == CameraInfo.CAMERA_FACING_FRONT && frontCameraOpenLegacy)) {
+                        CameraInfo info = CameraHolder.instance().getCameraInfo()[cameraId];
+                        if (info.facing == CameraInfo.CAMERA_FACING_BACK && backCameraOpenLegacy ||
+                                info.facing == CameraInfo.CAMERA_FACING_FRONT && frontCameraOpenLegacy) {
+                            try {
                                 mCamera = android.hardware.Camera.openLegacy(cameraId,
                                         android.hardware.Camera.CAMERA_HAL_API_VERSION_1_0);
-                            } else {
+                            } catch (RuntimeException e) {
+                                /* Retry with open if openLegacy fails */
+                                Log.v(TAG, "openLegacy failed. Using open instead");
                                 mCamera = android.hardware.Camera.open(cameraId);
                             }
-                        } catch (RuntimeException e) {
-                            /* Retry with open if openLegacy fails */
-                            Log.v(TAG, "openLegacy failed. Using open instead");
-                            mCamera = android.hardware.Camera.open(cameraId);
+                        } else {
+                                mCamera = android.hardware.Camera.open(cameraId);
                         }
                         if (mCamera != null) {
                             mParametersIsDirty = true;
@@ -250,6 +253,7 @@ class AndroidCameraManagerImpl implements CameraManager {
                             return;
                         }
                         mCamera.release();
+                        errorCbInstance = null;
                         mCamera = null;
                         return;
 
@@ -283,7 +287,13 @@ class AndroidCameraManagerImpl implements CameraManager {
                         return;
 
                     case START_PREVIEW_ASYNC:
-                        mCamera.startPreview();
+                        try {
+                            mCamera.startPreview();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            if (errorCbInstance != null)
+                                errorCbInstance.onStartPreviewFailure(msg.arg1);
+                        }
                         return;
 
                     case STOP_PREVIEW:
@@ -414,9 +424,10 @@ class AndroidCameraManagerImpl implements CameraManager {
     @Override
     public CameraManager.CameraProxy cameraOpen(
         Handler handler, int cameraId, CameraOpenErrorCallback callback) {
-        mCameraHandler.obtainMessage(OPEN_CAMERA, cameraId, 0,
-                CameraOpenErrorCallbackForward.getNewInstance(
-                        handler, callback)).sendToTarget();
+        mCameraHandler.errorCbInstance = CameraOpenErrorCallbackForward
+                .getNewInstance(handler, callback);
+        mCameraHandler.obtainMessage(OPEN_CAMERA, cameraId, 0, mCameraHandler.errorCbInstance)
+                .sendToTarget();
         mCameraHandler.waitDone();
         if (mCamera != null) {
             return new AndroidCameraProxyImpl();
@@ -728,7 +739,8 @@ class AndroidCameraManagerImpl implements CameraManager {
         public void onAutoFocusMoving(
                 final boolean moving, android.hardware.Camera camera) {
             final android.hardware.Camera currentCamera = mCamera.getCamera();
-
+            if(currentCamera == null)
+                return;
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -986,6 +998,16 @@ class AndroidCameraManagerImpl implements CameraManager {
                 @Override
                 public void run() {
                     mCallback.onReconnectionFailure(mgr);
+                }
+            });
+        }
+
+        @Override
+        public void onStartPreviewFailure(final int cameraId) {
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mCallback.onStartPreviewFailure(cameraId);
                 }
             });
         }

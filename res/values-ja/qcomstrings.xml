@@ -65,6 +65,7 @@
   <string name="pref_camera_manual_focus_entry_scale_mode">スケールモード</string>
   <string name="pref_camera_manual_focus_entry_diopter_mode">視度モード</string>
   <string name="pref_camera_manual_focus_entry_off">OFF</string>
+  <!-- Still More -->
   <!-- Video HDR-->
   <string name="pref_camera_video_hdr_title">動画HDR</string>
   <!-- CDS mode-->
@@ -198,7 +199,7 @@
   <string name="pref_camera_jpegquality_entry_0">55%</string>
   <string name="pref_camera_jpegquality_entry_1">65%（標準）</string>
   <string name="pref_camera_jpegquality_entry_2">75%（ファイン）</string>
-  <string name="pref_camera_jpegquality_entry_3">85%（スーパーファイン）</string>
+  <string name="pref_camera_jpegquality_entry_3">85%（ｽｰﾊﾟｰﾌｧｲﾝ）</string>
   <string name="pref_camera_jpegquality_entry_4">95%</string>
   <string name="pref_camera_jpegquality_entry_5">100%</string>
   <!-- Histogram -->
@@ -264,5 +265,9 @@
   <string name="video_quality_4k_disable_IS">4K動画サイズを有効にすると手ぶれ補正が無効になります</string>
   <!-- Toast after 2k4k video is enabled to inform SeeMore has been disabled -->
   <string name="video_quality_4k_disable_SeeMore">4K動画が有効になっている間はその他の設定を有効にすることはできません</string>
+  <!-- Toast after SeeMore has been enabled to show CDS is disabled -->
+  <string name="disable_CDS_during_SeeMore">SeeMoreを有効にするとCDSが無効になります</string>
+  <!-- Toast after SeeMore has been enabled to show TNR is disabled -->
+  <string name="disable_TNR_during_SeeMore">SeeMoreを有効にするとTNRが無効になります</string>
   <!-- TODO: Remove these? -->
 </resources>

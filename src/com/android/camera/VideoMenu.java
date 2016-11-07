@@ -76,6 +76,7 @@ public class VideoMenu extends MenuController
     private static final int PREVIEW_MENU_IN_ANIMATION = 1;
     private static final int PREVIEW_MENU_ON = 2;
     private static final int MODE_FILTER = 1;
+    private static final int DEVELOPER_MENU_TOUCH_COUNT = 7;
     private int mSceneStatus;
     private View mFrontBackSwitcher;
     private View mFilterModeSwitcher;
@@ -85,6 +86,7 @@ public class VideoMenu extends MenuController
     private String mPrevSavedVideoCDS;
     private boolean mIsVideoTNREnabled = false;
     private boolean mIsVideoCDSUpdated = false;
+    private int mPrivateCounter = 0;
     private static final int ANIMATION_DURATION = 300;
     private int previewMenuSize;
     private Rect mTmpRect = new Rect();
@@ -425,7 +427,7 @@ public class VideoMenu extends MenuController
         int[] iconIds = pref.getLargeIconIds();
         int resid = -1;
         int index = pref.findIndexOfValue(pref.getValue());
-        if (!pref.getUseSingleIcon() && iconIds != null) {
+        if (!pref.getUseSingleIcon() && iconIds != null && index >= 0) {
             // Each entry has a corresponding icon.
             resid = iconIds[index];
         } else {
@@ -609,8 +611,7 @@ public class VideoMenu extends MenuController
                 mPrevSavedVideoCDS = cds;
             }
 
-            if ((tnr != null) && !mActivity.getString(R.string.
-                    pref_camera_video_tnr_default).equals(tnr)) {
+            if ((tnr != null) && !tnr.equals("off")) {
                 mListMenu.setPreferenceEnabled(
                         CameraSettings.KEY_VIDEO_CDS_MODE,false);
                 mListMenu.overrideSettings(
@@ -633,16 +634,31 @@ public class VideoMenu extends MenuController
                     mIsVideoCDSUpdated = false;
                 }
             }
+
+            ListPreference pref_SeeMore = mPreferenceGroup.findPreference(CameraSettings.KEY_SEE_MORE);
+            if(pref_SeeMore != null && pref_SeeMore.getValue() != null
+                    && pref_SeeMore.getValue().equals("on")) {
+                mListMenu.setPreferenceEnabled(
+                        CameraSettings.KEY_VIDEO_CDS_MODE,false);
+                mListMenu.overrideSettings(
+                        CameraSettings.KEY_VIDEO_CDS_MODE,
+                        mActivity.getString(R.string.pref_camera_video_cds_value_off));
+                mListMenu.setPreferenceEnabled(
+                        CameraSettings.KEY_VIDEO_TNR_MODE, false);
+                mListMenu.overrideSettings(
+                        CameraSettings.KEY_VIDEO_TNR_MODE,
+                        mActivity.getString(R.string.pref_camera_video_tnr_value_off));
+            }
         }
     }
 
     @Override
     public void overrideSettings(final String... keyvalues) {
-        overrideCDSMode();
         super.overrideSettings(keyvalues);
-        if (((mListMenu == null)) || mPopupStatus != POPUP_FIRST_LEVEL) {
-            mPopupStatus = POPUP_FIRST_LEVEL;
+        if (mListMenu == null) {
             initializePopup();
+        } else {
+            overrideCDSMode();
         }
         mListMenu.overrideSettings(keyvalues);
 
@@ -720,7 +736,6 @@ public class VideoMenu extends MenuController
     public void onPreferenceClicked(ListPreference pref, int y) {
         LayoutInflater inflater = (LayoutInflater) mActivity.getSystemService(
                 Context.LAYOUT_INFLATER_SERVICE);
-
         ListSubMenu basic = (ListSubMenu) inflater.inflate(
                 R.layout.list_sub_menu, null, false);
         basic.initialize(pref, y);
@@ -733,10 +748,36 @@ public class VideoMenu extends MenuController
             mUI.showPopup(mListSubMenu, 2, true);
         }
         mPopupStatus = POPUP_SECOND_LEVEL;
+
+        // Developer menu
+        if (pref.getKey().equals(CameraSettings.KEY_MAX_BRIGHTNESS)) {
+            mPrivateCounter++;
+            if (mPrivateCounter >= DEVELOPER_MENU_TOUCH_COUNT) {
+                SharedPreferences prefs = PreferenceManager
+                        .getDefaultSharedPreferences(mActivity);
+                if (!mActivity.isDeveloperMenuEnabled()) {
+                    mActivity.enableDeveloperMenu();
+                    prefs.edit().putBoolean(CameraSettings.KEY_DEVELOPER_MENU, true).apply();
+                    closeAllView();
+                    RotateTextToast.makeText(mActivity,
+                            R.string.developer_menu_enabled, Toast.LENGTH_SHORT).show();
+                } else {
+                    mActivity.disableDeveloperMenu();
+                    prefs.edit().putBoolean(CameraSettings.KEY_DEVELOPER_MENU, false).apply();
+                    closeAllView();
+                    RotateTextToast.makeText(mActivity,
+                            R.string.developer_menu_disabled, Toast.LENGTH_SHORT).show();
+                }
+                mPrivateCounter = 0;
+            }
+        } else {
+            mPrivateCounter = 0;
+        }
     }
 
     public void onListMenuTouched() {
         mUI.removeLevel2();
+        mPopupStatus = POPUP_FIRST_LEVEL;
     }
 
     public void closeAllView() {
@@ -785,6 +826,11 @@ public class VideoMenu extends MenuController
             }
             setPreference(CameraSettings.KEY_VIDEO_TIME_LAPSE_FRAME_INTERVAL, defaultValue);
         }
+
+        if (notSame(pref, CameraSettings.KEY_RECORD_LOCATION, "off")) {
+            mActivity.requestLocationPermission();
+        }
+
         super.onSettingChanged(pref);
     }
 

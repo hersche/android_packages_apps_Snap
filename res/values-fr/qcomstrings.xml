@@ -65,6 +65,7 @@
   <string name="pref_camera_manual_focus_entry_scale_mode">Mode de mise à l\'échelle</string>
   <string name="pref_camera_manual_focus_entry_diopter_mode">Mode de réglage dioptrique</string>
   <string name="pref_camera_manual_focus_entry_off">Désactivé</string>
+  <!-- Still More -->
   <!-- Video HDR-->
   <string name="pref_camera_video_hdr_title">Vidéo HDR</string>
   <!-- CDS mode-->
@@ -264,5 +265,7 @@
   <string name="video_quality_4k_disable_IS">Activer la vidéo 4K va désactiver la stabilisation</string>
   <!-- Toast after 2k4k video is enabled to inform SeeMore has been disabled -->
   <string name="video_quality_4k_disable_SeeMore">SeeMore n\'est pas activable pendant la vidéo 4k</string>
+  <!-- Toast after SeeMore has been enabled to show CDS is disabled -->
+  <!-- Toast after SeeMore has been enabled to show TNR is disabled -->
   <!-- TODO: Remove these? -->
 </resources>

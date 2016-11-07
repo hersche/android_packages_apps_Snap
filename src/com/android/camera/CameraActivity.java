@@ -19,6 +19,7 @@ package com.android.camera;
 
 import android.view.Display;
 import android.graphics.Point;
+import android.Manifest;
 import android.animation.Animator;
 import android.annotation.TargetApi;
 import android.app.ActionBar;
@@ -33,6 +34,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -100,6 +102,7 @@ import com.android.camera.data.MediaDetails;
 import com.android.camera.data.SimpleViewData;
 import com.android.camera.exif.ExifInterface;
 import com.android.camera.tinyplanet.TinyPlanetFragment;
+import com.android.camera.ui.CameraRootFrame;
 import com.android.camera.ui.CameraRootView;
 import com.android.camera.ui.ModuleSwitcher;
 import com.android.camera.ui.DetailsDialog;
@@ -159,6 +162,9 @@ public class CameraActivity extends Activity
     private static final int HIDE_ACTION_BAR = 1;
     private static final long SHOW_ACTION_BAR_TIMEOUT_MS = 3000;
 
+    /** Permission request code */
+    private static final int PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1;
+
     /** Whether onResume should reset the view to the preview. */
     private boolean mResetToPreviewOnResume = true;
 
@@ -189,8 +195,14 @@ public class CameraActivity extends Activity
     private PlaceholderManager mPlaceholderManager;
     private int mCurrentModuleIndex;
     private CameraModule mCurrentModule;
+    private PhotoModule mPhotoModule;
+    private VideoModule mVideoModule;
+    private WideAnglePanoramaModule mPanoModule;
     private FrameLayout mAboveFilmstripControlLayout;
-    private CameraRootView mCameraModuleRootView;
+    private CameraRootFrame mCameraRootFrame;
+    private CameraRootView mCameraPhotoModuleRootView;
+    private CameraRootView mCameraVideoModuleRootView;
+    private CameraRootView mCameraPanoModuleRootView;
     private FilmStripView mFilmStripView;
     private ProgressBar mBottomProgress;
     private View mPanoStitchingPanel;
@@ -220,6 +232,7 @@ public class CameraActivity extends Activity
     private boolean mPaused = true;
     private View mPreviewCover;
     private FrameLayout mPreviewContentLayout;
+    private boolean mHasCriticalPermissions;
 
     private Uri[] mNfcPushUris = new Uri[1];
 
@@ -245,6 +258,7 @@ public class CameraActivity extends Activity
     // FilmStripView.setDataAdapter fires 2 onDataLoaded calls before any data is actually loaded
     // Keep track of data request here to avoid creating useless UpdateThumbnailTask.
     private boolean mDataRequested;
+    private Cursor mCursor;
 
     private WakeLock mWakeLock;
     private Context mContext;
@@ -313,6 +327,15 @@ public class CameraActivity extends Activity
                     CameraUtil.showErrorAndFinish(CameraActivity.this,
                             R.string.cannot_connect_camera);
                 }
+
+                @Override
+                public void onStartPreviewFailure(int cameraId) {
+                    UsageStatistics.onEvent(UsageStatistics.COMPONENT_CAMERA,
+                            UsageStatistics.ACTION_START_PREVIEW_FAIL, "startpreview");
+
+                    CameraUtil.showErrorAndFinish(CameraActivity.this,
+                            R.string.cannot_connect_camera);
+                }
             };
 
     // update the status of storage space when SD card status changed.
@@ -320,6 +343,7 @@ public class CameraActivity extends Activity
         @Override
         public void onReceive(Context context, Intent intent) {
             Log.d(TAG, "SDcard status changed, update storage space");
+            SDCard.instance().scanVolumes();
             updateStorageSpaceAndHint();
         }
     };
@@ -741,7 +765,7 @@ public class CameraActivity extends Activity
     }
 
     public void updateThumbnail(final byte[] jpegData) {
-        (new UpdateThumbnailTask(jpegData, false)).execute();
+        (new UpdateThumbnailTask(jpegData, true)).execute();
     }
 
     public void updateThumbnail(final Bitmap bitmap) {
@@ -806,6 +830,8 @@ public class CameraActivity extends Activity
         protected void onPostExecute(Bitmap bitmap) {
             if (bitmap == null) {
                 if (mThumbnail != null) {
+                    // Clear the image resource when the bitmap is invalid.
+                    mThumbnail.setImageDrawable(null);
                     mThumbnail.setVisibility(View.GONE);
                 }
             } else {
@@ -886,6 +912,20 @@ public class CameraActivity extends Activity
         public CircularDrawable(Bitmap bitmap) {
             int w = bitmap.getWidth();
             int h = bitmap.getHeight();
+            int targetSize = getResources().getDimensionPixelSize(R.dimen.capture_size);
+            if (Math.min(w, h) < targetSize) {
+                Matrix matrix = new Matrix();
+                float scale = 1.0f;
+                if (w > h) {
+                    scale = (float) targetSize / (float) h;
+                } else {
+                    scale = (float) targetSize / (float) w;
+                }
+                matrix.postScale(scale, scale);
+                bitmap = Bitmap.createBitmap(bitmap, 0, 0, w, h, matrix, true);
+                w = (int) (w * scale);
+                h = (int) (h * scale);
+            }
             if (w > h) {
                 mLength = h;
                 bitmap = Bitmap.createBitmap(bitmap, (w - h) / 2, 0, h, h);
@@ -1394,6 +1434,11 @@ public class CameraActivity extends Activity
     @Override
     public void onCreate(Bundle state) {
         super.onCreate(state);
+        if (checkPermissions() || !mHasCriticalPermissions) {
+            Log.v(TAG, "onCreate: Missing critical permissions.");
+            finish();
+            return;
+        }
         // Check if this is in the secure camera mode.
         Intent intent = getIntent();
         String action = intent.getAction();
@@ -1404,6 +1449,8 @@ public class CameraActivity extends Activity
         } else {
             mSecureCamera = intent.getBooleanExtra(SECURE_CAMERA_EXTRA, false);
         }
+
+        mCursor = getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null, null);
 
         if (mSecureCamera) {
             // Change the window flags so that secure camera can show when locked
@@ -1440,7 +1487,12 @@ public class CameraActivity extends Activity
 
         LayoutInflater inflater = getLayoutInflater();
         View rootLayout = inflater.inflate(R.layout.camera, null, false);
-        mCameraModuleRootView = (CameraRootView) rootLayout.findViewById(R.id.camera_app_root);
+        mCameraRootFrame = (CameraRootFrame)rootLayout.findViewById(R.id.camera_root_frame);
+        mCameraPhotoModuleRootView =
+                (CameraRootView)rootLayout.findViewById(R.id.camera_photo_root);
+        mCameraVideoModuleRootView =
+                (CameraRootView)rootLayout.findViewById(R.id.camera_video_root);
+        mCameraPanoModuleRootView = (CameraRootView)rootLayout.findViewById(R.id.camera_pano_root);
 
         int moduleIndex = -1;
         if (MediaStore.INTENT_ACTION_VIDEO_CAMERA.equals(getIntent().getAction())
@@ -1481,7 +1533,6 @@ public class CameraActivity extends Activity
 
         mOrientationListener = new MyOrientationEventListener(this);
         setModuleFromIndex(moduleIndex);
-        mCurrentModule.init(this, mCameraModuleRootView);
 
         mActionBar = getActionBar();
         mActionBar.addOnMenuVisibilityListener(this);
@@ -1597,7 +1648,9 @@ public class CameraActivity extends Activity
     @Override
     public void onUserInteraction() {
         super.onUserInteraction();
-        mCurrentModule.onUserInteraction();
+        if (mCurrentModule != null) {
+            mCurrentModule.onUserInteraction();
+        }
     }
 
     @Override
@@ -1645,7 +1698,59 @@ public class CameraActivity extends Activity
     }
 
     @Override
+    public void onWindowFocusChanged(boolean focus) {
+        // Hide action bar first since we are in full screen mode first, and
+        // switch the system UI to lights-out mode.
+        if (focus) this.setSystemBarsVisibility(false);
+    }
+
+    /**
+     * Checks if any of the needed Android runtime permissions are missing.
+     * If they are, then launch the permissions activity under one of the following conditions:
+     * a) If critical permissions are missing, display permission request again
+     * b) If non-critical permissions are missing, just display permission request once.
+     * Critical permissions are: camera, microphone and storage. The app cannot run without them.
+     * Non-critical permission is location.
+     */
+    private boolean checkPermissions() {
+        boolean requestPermission = false;
+
+        if (checkSelfPermission(Manifest.permission.CAMERA) ==
+                        PackageManager.PERMISSION_GRANTED &&
+                checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                        PackageManager.PERMISSION_GRANTED &&
+                checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+                        PackageManager.PERMISSION_GRANTED) {
+            mHasCriticalPermissions = true;
+        } else {
+            mHasCriticalPermissions = false;
+        }
+
+        if ((checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) !=
+                    PackageManager.PERMISSION_GRANTED) || !mHasCriticalPermissions) {
+            final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+            boolean isRequestShown = prefs.getBoolean(CameraSettings.KEY_REQUEST_PERMISSION, false);
+            if(!isRequestShown || !mHasCriticalPermissions) {
+                Log.v(TAG, "Request permission");
+                Intent intent = new Intent(this, PermissionsActivity.class);
+                startActivity(intent);
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.putBoolean(CameraSettings.KEY_REQUEST_PERMISSION, true);
+                editor.apply();
+                requestPermission = true;
+           }
+        }
+        return requestPermission;
+    }
+
+    @Override
     public void onResume() {
+        if (checkPermissions() || !mHasCriticalPermissions) {
+            super.onResume();
+            Log.v(TAG, "onResume: Missing critical permissions.");
+            finish();
+            return;
+        }
         UsageStatistics.onEvent(UsageStatistics.COMPONENT_CAMERA,
                 UsageStatistics.ACTION_FOREGROUNDED, this.getClass().getSimpleName());
 
@@ -1707,13 +1812,17 @@ public class CameraActivity extends Activity
             mWakeLock.release();
             Log.d(TAG, "wake lock release");
         }
-        if (mSecureCamera) {
-            unregisterReceiver(mScreenOffReceiver);
-        }
-        getContentResolver().unregisterContentObserver(mLocalImagesObserver);
-        getContentResolver().unregisterContentObserver(mLocalVideosObserver);
-        unregisterReceiver(mSDcardMountedReceiver);
+        if (mCursor != null) {
+            if (mSecureCamera) {
+                unregisterReceiver(mScreenOffReceiver);
+            }
+            getContentResolver().unregisterContentObserver(mLocalImagesObserver);
+            getContentResolver().unregisterContentObserver(mLocalVideosObserver);
+            unregisterReceiver(mSDcardMountedReceiver);
 
+            mCursor.close();
+            mCursor=null;
+        }
         super.onDestroy();
     }
 
@@ -1865,6 +1974,37 @@ public class CameraActivity extends Activity
         return mInCameraApp;
     }
 
+    public void requestLocationPermission() {
+        if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) {
+            Log.v(TAG, "Request Location permission");
+            mCurrentModule.waitingLocationPermissionResult(true);
+            requestPermissions(
+                new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
+                PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+            String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION: {
+                // If request is cancelled, the result arrays are empty.
+                 mCurrentModule.waitingLocationPermissionResult(false);
+                if (grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.v(TAG, "Location permission is granted");
+                    mCurrentModule.enableRecordingLocation(true);
+                } else {
+                    Log.w(TAG, "Location permission is denied");
+                    mCurrentModule.enableRecordingLocation(false);
+                }
+                break;
+            }
+        }
+    }
+
     @Override
     public void onModuleSelected(int moduleIndex) {
         if (mCurrentModuleIndex == moduleIndex) {
@@ -1892,34 +2032,46 @@ public class CameraActivity extends Activity
      * index an sets it as mCurrentModule.
      */
     private void setModuleFromIndex(int moduleIndex) {
+        mCameraPhotoModuleRootView.setVisibility(View.GONE);
+        mCameraVideoModuleRootView.setVisibility(View.GONE);
+        mCameraPanoModuleRootView.setVisibility(View.GONE);
         mCurrentModuleIndex = moduleIndex;
         switch (moduleIndex) {
             case ModuleSwitcher.VIDEO_MODULE_INDEX:
-                mCurrentModule = new VideoModule();
-                break;
-
-            case ModuleSwitcher.PHOTO_MODULE_INDEX:
-                mCurrentModule = new PhotoModule();
+                if (mVideoModule == null) {
+                    mVideoModule = new VideoModule();
+                    mVideoModule.init(this, mCameraVideoModuleRootView);
+                }
+                mCurrentModule = mVideoModule;
+                mCameraVideoModuleRootView.setVisibility(View.VISIBLE);
                 break;
 
             case ModuleSwitcher.WIDE_ANGLE_PANO_MODULE_INDEX:
-                mCurrentModule = new WideAnglePanoramaModule();
+                if (mPanoModule == null) {
+                    mPanoModule = new WideAnglePanoramaModule();
+                    mPanoModule.init(this, mCameraPanoModuleRootView);
+                }
+                mCurrentModule = mPanoModule;
+                mCameraPanoModuleRootView.setVisibility(View.VISIBLE);
                 break;
 
-            case ModuleSwitcher.LIGHTCYCLE_MODULE_INDEX:
-                mCurrentModule = PhotoSphereHelper.createPanoramaModule();
-                break;
-            case ModuleSwitcher.GCAM_MODULE_INDEX:
-                // Force immediate release of Camera instance
-                CameraHolder.instance().strongRelease();
-                mCurrentModule = GcamHelper.createGcamModule();
-                break;
-            default:
-                // Fall back to photo mode.
-                mCurrentModule = new PhotoModule();
-                mCurrentModuleIndex = ModuleSwitcher.PHOTO_MODULE_INDEX;
+            case ModuleSwitcher.PHOTO_MODULE_INDEX:
+            case ModuleSwitcher.LIGHTCYCLE_MODULE_INDEX: //Unused module for now
+            case ModuleSwitcher.GCAM_MODULE_INDEX:  //Unused module for now
+            default: // Fall back to photo mode.
+                if (mPhotoModule == null) {
+                    mPhotoModule = new PhotoModule();
+                    mPhotoModule.init(this, mCameraPhotoModuleRootView);
+                }
+                mCurrentModule = mPhotoModule;
+                mCameraPhotoModuleRootView.setVisibility(View.VISIBLE);
                 break;
         }
+
+        // Re-apply the last fitSystemWindows() run. Our views rely on this, but
+        // the framework's ActionBarOverlayLayout effectively prevents this if the
+        // actual insets haven't changed.
+        mCameraRootFrame.redoFitSystemWindows();
     }
 
     /**
@@ -1957,11 +2109,6 @@ public class CameraActivity extends Activity
     }
 
     private void openModule(CameraModule module) {
-        module.init(this, mCameraModuleRootView);
-        // Re-apply the last fitSystemWindows() run. Our views rely on this, but
-        // the framework's ActionBarOverlayLayout effectively prevents this if the
-        // actual insets haven't changed.
-        mCameraModuleRootView.redoFitSystemWindows();
         module.onResumeBeforeSuper();
         module.onResumeAfterSuper();
     }
@@ -1969,8 +2116,6 @@ public class CameraActivity extends Activity
     private void closeModule(CameraModule module) {
         module.onPauseBeforeSuper();
         module.onPauseAfterSuper();
-        ((ViewGroup) mCameraModuleRootView).removeAllViews();
-        ((ViewGroup) mCameraModuleRootView).clearDisappearingChildren();
     }
 
     private void performDeletion() {

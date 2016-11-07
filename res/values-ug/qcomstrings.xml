@@ -65,6 +65,7 @@
   <string name="pref_camera_manual_focus_entry_scale_mode">نىسپەت شەكلى</string>
   <string name="pref_camera_manual_focus_entry_diopter_mode">نۇر سۇندۇرۇش شەكلى</string>
   <string name="pref_camera_manual_focus_entry_off">تاقاق</string>
+  <!-- Still More -->
   <!-- Video HDR-->
   <string name="pref_camera_video_hdr_title">سىن HDR</string>
   <!-- CDS mode-->
@@ -264,5 +265,7 @@
   <string name="video_quality_4k_disable_IS">چوڭلىقى 4k سىن ئېلىشنى قوزغاتسىڭىز، مۇقىملاشتۇرۇش ئىشلىمەيدۇ</string>
   <!-- Toast after 2k4k video is enabled to inform SeeMore has been disabled -->
   <string name="video_quality_4k_disable_SeeMore">ئىقتىدار SeeMore يوقىرى ئېنىقلىقتىكى 4k سىنغا ئېلۋاتقاندا ئىشلىمەيدۇ</string>
+  <!-- Toast after SeeMore has been enabled to show CDS is disabled -->
+  <!-- Toast after SeeMore has been enabled to show TNR is disabled -->
   <!-- TODO: Remove these? -->
 </resources>

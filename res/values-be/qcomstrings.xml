@@ -65,6 +65,7 @@
   <string name="pref_camera_manual_focus_entry_scale_mode">Рэжым шкалы</string>
   <string name="pref_camera_manual_focus_entry_diopter_mode">Дыяптрычны рэжым</string>
   <string name="pref_camera_manual_focus_entry_off">Адключана</string>
+  <!-- Still More -->
   <!-- Video HDR-->
   <string name="pref_camera_video_hdr_title">HDR-відэаздымка</string>
   <!-- CDS mode-->
@@ -80,6 +81,7 @@
   <!-- Face detection -->
   <string name="pref_camera_facedetection_title">Вызначэнне твару</string>
   <!-- Selfie Flash -->
+  <string name="pref_selfie_flash_title">Сэлфі-выбліск</string>
   <!-- Red eye reduction -->
   <string name="pref_camera_redeyereduction_title">Змяншэнне эфекту чырвоных вачэй</string>
   <!-- AE bracketing -->
@@ -263,5 +265,7 @@
   <string name="video_quality_4k_disable_IS">Улучэнне відэаздымкі з дазволам 4K адключыць стабілізацыю</string>
   <!-- Toast after 2k4k video is enabled to inform SeeMore has been disabled -->
   <string name="video_quality_4k_disable_SeeMore">Функцыя Seemore не можа быць актываваная падчас запісу 4K</string>
+  <!-- Toast after SeeMore has been enabled to show CDS is disabled -->
+  <!-- Toast after SeeMore has been enabled to show TNR is disabled -->
   <!-- TODO: Remove these? -->
 </resources>

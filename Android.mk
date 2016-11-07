@@ -15,8 +15,6 @@ LOCAL_SRC_FILES += $(call all-java-files-under, src_pd_gcam)
 
 LOCAL_RESOURCE_DIR += $(LOCAL_PATH)/res
 
-LOCAL_CERTIFICATE := platform
-
 include $(LOCAL_PATH)/version.mk
 LOCAL_AAPT_FLAGS := \
         --auto-add-overlay \
@@ -24,6 +22,7 @@ LOCAL_AAPT_FLAGS := \
         --version-code $(version_code_package) \
 
 LOCAL_PACKAGE_NAME := Snap
+LOCAL_PRIVILEGED_MODULE := true
 
 LOCAL_AAPT_FLAGS += --rename-manifest-package org.cyanogenmod.snap
 

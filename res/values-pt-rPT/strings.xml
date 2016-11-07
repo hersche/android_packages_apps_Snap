@@ -142,6 +142,10 @@
   <string name="cannot_connect_camera">Não é possível efetuar ligação à câmara.</string>
   <!-- message for the dialog showing the camera is disabled because of security policies. Camera cannot be used. -->
   <string name="camera_disabled">Devido às políticas de segurança, a câmara foi desativada.</string>
+  <!-- message for the dialog showing that the app does not have sufficient permissions [CHAR LIMIT=NONE] -->
+  <string name="error_permissions">A aplicação não tem permissões críticas necessárias para executar. Por favor, verifique as definições de permissões.</string>
+  <!-- Dialog "Dismiss" button. Closes the dialog [CHAR LIMIT=12]-->
+  <string name="dialog_dismiss">Ignorar</string>
   <!-- alert to the user to wait for some operation to complete -->
   <string name="wait">Aguarde\u2026</string>
   <!-- alert to the user that an SD card must be installed before using the camera -->

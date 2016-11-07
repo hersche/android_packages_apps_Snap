@@ -139,6 +139,10 @@
   <string name="cannot_connect_camera">无法连接到相机。</string>
   <!-- message for the dialog showing the camera is disabled because of security policies. Camera cannot be used. -->
   <string name="camera_disabled">由于安全政策的限制，相机已被禁用。</string>
+  <!-- message for the dialog showing that the app does not have sufficient permissions [CHAR LIMIT=NONE] -->
+  <string name="error_permissions">应用没有运行所需的关键权限。请检查您的权限设置。</string>
+  <!-- Dialog "Dismiss" button. Closes the dialog [CHAR LIMIT=12]-->
+  <string name="dialog_dismiss">忽略</string>
   <!-- alert to the user to wait for some operation to complete -->
   <string name="wait">请稍候…</string>
   <!-- alert to the user that an SD card must be installed before using the camera -->
